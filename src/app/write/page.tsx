@@ -12,7 +12,12 @@ export default async function WritePage() {
 
   if (!user) redirect("/login");
 
-  // Por ahora buscamos al "otro" usuario (el que no soy yo)
+  const { data: myProfile } = await supabase
+    .from("profiles")
+    .select("display_name, location")
+    .eq("id", user.id)
+    .single();
+
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, display_name, email, location")
@@ -45,10 +50,14 @@ export default async function WritePage() {
           recipientName={
             recipient.display_name || recipient.email || "Destinatario"
           }
+          senderName={
+            myProfile?.display_name || user.email?.split("@")[0] || "Yo"
+          }
+          senderLocation={myProfile?.location || ""}
         />
       ) : (
         <p className="text-muted-foreground">
-          Necesitas que tu pareja también tenga cuenta para poder enviarle
+          Necesitas que la otra persona también tenga cuenta para enviarle
           cartas.
         </p>
       )}

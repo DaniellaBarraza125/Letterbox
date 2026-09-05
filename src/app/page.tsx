@@ -19,13 +19,14 @@ export default async function HomePage() {
     .eq("id", user.id)
     .single();
 
-  // Cartas que me han enviado y ya llegaron o están en camino
   const { data: letters } = await supabase
     .from("letters")
     .select(
       "*, sender:profiles!letters_sender_id_fkey(display_name, avatar_url)",
     )
-    .eq("recipient_id", user.id)
+    .or(
+      `recipient_id.eq.${user.id},and(visibility.eq.shared,sender_id.eq.${user.id})`,
+    )
     .order("created_at", { ascending: false });
 
   const now = new Date();
@@ -44,6 +45,11 @@ export default async function HomePage() {
             <Link href="/profile">
               <Button variant="ghost" size="sm">
                 Perfil
+              </Button>
+            </Link>
+            <Link href="/stamps">
+              <Button variant="ghost" size="sm">
+                Estampas
               </Button>
             </Link>
             <form action="/auth/signout" method="post">
@@ -85,13 +91,12 @@ export default async function HomePage() {
               );
               const hasArrived = new Date(letter.estimated_arrival_at) <= now;
               const isInTransit = letter.status === "in_transit" && !hasArrived;
-
               return (
-                <div
-                  key={letter.id}
-                  className="border rounded-xl p-5 hover:bg-muted/30 transition-colors"
+                <Link
+                  href={`/letter/${letter.id}`}
+                  className="block border rounded-xl p-5 hover:bg-muted/30"
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex justify-between gap-4">
                     <div>
                       <p className="font-medium">
                         {letter.title || "Sin título"}
@@ -108,19 +113,16 @@ export default async function HomePage() {
                     </div>
                   </div>
 
-                  {isInTransit ? (
-                    <p className="text-sm text-muted-foreground mt-3 italic">
-                      La carta todavía está viajando. Llegará el{" "}
-                      {new Date(letter.estimated_arrival_at).toLocaleString(
-                        "es-ES",
-                      )}
-                    </p>
-                  ) : (
-                    <p className="text-sm mt-3 line-clamp-2">
-                      {letter.content_text}
-                    </p>
-                  )}
-                </div>
+                  <div className="mt-3 flex gap-2 text-xs">
+                    <span className="px-2 py-0.5 rounded-full bg-muted">
+                      {letter.letter_type === "postcard"
+                        ? "Postal"
+                        : letter.visibility === "shared"
+                          ? "Buzón"
+                          : "Carta privada"}
+                    </span>
+                  </div>
+                </Link>
               );
             })}
           </div>
