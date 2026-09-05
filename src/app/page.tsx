@@ -1,68 +1,130 @@
-import Image from "next/image";
+import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { DELIVERY_METHODS } from "@/lib/delivery-methods";
 
-export default function Home() {
+export default async function HomePage() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+  // Cartas que me han enviado y ya llegaron o están en camino
+  const { data: letters } = await supabase
+    .from("letters")
+    .select(
+      "*, sender:profiles!letters_sender_id_fkey(display_name, avatar_url)",
+    )
+    .eq("recipient_id", user.id)
+    .order("created_at", { ascending: false });
+
+  const now = new Date();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <div className="min-h-screen bg-background">
+      <header className="border-b">
+        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
+          <h1 className="text-xl font-semibold tracking-tight">
+            Nuestro Buzón
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <div className="flex items-center gap-3">
+            <Link href="/write">
+              <Button size="sm">Escribir carta</Button>
+            </Link>
+            <Link href="/profile">
+              <Button variant="ghost" size="sm">
+                Perfil
+              </Button>
+            </Link>
+            <form action="/auth/signout" method="post">
+              <Button type="submit" variant="outline" size="sm">
+                Salir
+              </Button>
+            </form>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-3xl mx-auto px-6 py-10">
+        <div className="text-center space-y-2 mb-10">
+          <h2 className="text-3xl font-medium">
+            Hola, {profile?.display_name || user.email?.split("@")[0]}
+          </h2>
+          <p className="text-muted-foreground">
+            {profile?.location
+              ? `Desde ${profile.location}`
+              : "Añade tu ubicación en el perfil"}
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+        {!letters || letters.length === 0 ? (
+          <div className="border border-dashed rounded-xl p-12 text-center text-muted-foreground">
+            <p className="text-lg">Todavía no hay cartas</p>
+            <p className="text-sm mt-2">
+              Escribe la primera carta a tu persona especial
+            </p>
+            <Link href="/write" className="inline-block mt-6">
+              <Button>Escribir carta</Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {letters.map((letter) => {
+              const method = DELIVERY_METHODS.find(
+                (m) => m.id === letter.delivery_method,
+              );
+              const hasArrived = new Date(letter.estimated_arrival_at) <= now;
+              const isInTransit = letter.status === "in_transit" && !hasArrived;
+
+              return (
+                <div
+                  key={letter.id}
+                  className="border rounded-xl p-5 hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium">
+                        {letter.title || "Sin título"}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        De: {letter.sender?.display_name || "Alguien especial"}
+                      </p>
+                    </div>
+                    <div className="text-right text-sm">
+                      <span className="text-lg">{method?.icon}</span>
+                      <p className="text-muted-foreground mt-1">
+                        {isInTransit ? "En camino..." : "Ha llegado"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {isInTransit ? (
+                    <p className="text-sm text-muted-foreground mt-3 italic">
+                      La carta todavía está viajando. Llegará el{" "}
+                      {new Date(letter.estimated_arrival_at).toLocaleString(
+                        "es-ES",
+                      )}
+                    </p>
+                  ) : (
+                    <p className="text-sm mt-3 line-clamp-2">
+                      {letter.content_text}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </main>
     </div>
   );
