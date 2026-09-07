@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { DELIVERY_METHODS, DeliveryMethodId } from "@/lib/delivery-methods";
-import { calculateArrivalDate } from "@/lib/calculate-arrival";
 import {
   LETTER_OPENING_STYLES,
   LETTER_CLOSINGS,
@@ -18,6 +17,7 @@ import RichEditor from "@/components/RichEditor";
 import PostcardComposer, {
   type PostcardData,
 } from "@/components/PostCardComposer";
+import { calculateArrivalDate, getDistanceKm } from "@/lib/calculate-arrival";
 
 type Props = {
   senderId: string;
@@ -25,6 +25,10 @@ type Props = {
   recipientName: string;
   senderName: string;
   senderLocation: string;
+  senderLat: number | null;
+  senderLng: number | null;
+  recipientLat: number | null;
+  recipientLng: number | null;
 };
 
 const emptyPostcard: PostcardData = {
@@ -43,6 +47,10 @@ export default function WriteLetterForm({
   recipientName,
   senderName,
   senderLocation,
+  senderLat,
+  senderLng,
+  recipientLat,
+  recipientLng,
 }: Props) {
   const [letterType, setLetterType] = useState<"letter" | "post" | "postcard">(
     "letter",
@@ -101,6 +109,22 @@ export default function WriteLetterForm({
     setMessage("");
 
     try {
+      // Distancia (si hay coordenadas)
+      let distanceKm = 800;
+      if (
+        senderLat != null &&
+        senderLng != null &&
+        recipientLat != null &&
+        recipientLng != null
+      ) {
+        distanceKm = getDistanceKm(
+          senderLat,
+          senderLng,
+          recipientLat,
+          recipientLng,
+        );
+      }
+
       if (letterType === "postcard") {
         if (!postcardData.imageUrl) {
           setMessage("La postal necesita una imagen");
@@ -113,6 +137,22 @@ export default function WriteLetterForm({
           return;
         }
 
+        // Postales: en test mode llega ya; si no, correo normal/express
+        let estimatedArrival = calculateArrivalDate("letter", distanceKm);
+
+        if (postcardData.isExpress) {
+          const half = Math.max(
+            (estimatedArrival.getTime() - Date.now()) / 2,
+            60 * 1000,
+          );
+          estimatedArrival = new Date(Date.now() + half);
+        }
+
+        // Si quieres forzar inmediato siempre en postales de prueba, deja esto:
+        if (process.env.NEXT_PUBLIC_DELIVERY_TEST_MODE === "true") {
+          estimatedArrival = new Date();
+        }
+
         const { error } = await supabase.from("letters").insert({
           sender_id: senderId,
           recipient_id: recipientId,
@@ -120,8 +160,11 @@ export default function WriteLetterForm({
           content: { text: postcardData.message },
           content_text: postcardData.message,
           delivery_method: "letter",
-          estimated_arrival_at: new Date().toISOString(), // pruebas: inmediato
-          status: "delivered",
+          estimated_arrival_at: estimatedArrival.toISOString(),
+          status:
+            process.env.NEXT_PUBLIC_DELIVERY_TEST_MODE === "true"
+              ? "delivered"
+              : "in_transit",
           visibility: "private",
           letter_type: "postcard",
           postcard_image_url: postcardData.imageUrl,
@@ -136,13 +179,13 @@ export default function WriteLetterForm({
 
         if (error) throw error;
       } else {
+        // Carta privada o post del buzón
         if (!contentText.trim()) {
           setMessage("La carta no puede estar vacía");
           setLoading(false);
           return;
         }
 
-        const distanceKm = 800;
         const estimatedArrival = calculateArrivalDate(method, distanceKm);
 
         const { error } = await supabase.from("letters").insert({
@@ -153,7 +196,10 @@ export default function WriteLetterForm({
           content_text: contentText,
           delivery_method: method,
           estimated_arrival_at: estimatedArrival.toISOString(),
-          status: "in_transit",
+          status:
+            process.env.NEXT_PUBLIC_DELIVERY_TEST_MODE === "true"
+              ? "delivered"
+              : "in_transit",
           visibility: letterType === "post" ? "shared" : "private",
           letter_type: letterType === "post" ? "post" : "letter",
           opening_style: openingStyle,

@@ -23,17 +23,18 @@ export default function PostcardFlip({
   const [flipped, setFlipped] = useState(false);
 
   return (
-    <div
-      className="mx-auto w-full max-w-md space-y-4"
-      style={{ width: "900px" }}
-    >
-      <div className="relative h-64 sm:h-80 [perspective:1000px]">
+    <div className="mx-auto w-full space-y-4" style={{ maxWidth: 900 }}>
+      {/* Postal grande y horizontal */}
+      <div
+        className="relative w-full [perspective:1200px]"
+        style={{ aspectRatio: "3 / 2", minHeight: 420 }}
+      >
         <div
           className="relative h-full w-full transition-transform duration-500 [transform-style:preserve-3d]"
           style={{ transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
         >
-          {/* Frente */}
-          <div className="absolute inset-0 overflow-hidden rounded-xl border bg-card shadow-sm [backface-visibility:hidden]">
+          {/* FRENTE */}
+          <div className="absolute inset-0 overflow-hidden rounded-xl border bg-card shadow-md [backface-visibility:hidden]">
             <img
               src={imageUrl}
               alt="Postal"
@@ -44,49 +45,51 @@ export default function PostcardFlip({
               <img
                 src={stamp}
                 alt="Estampa"
-                className="absolute right-3 top-3 h-14 w-10 rounded-sm border border-white/70 object-cover shadow"
+                className="absolute right-4 top-4 h-16 w-12 rounded-sm border border-white/80 object-cover shadow"
               />
             ) : (
-              <div className="absolute right-3 top-3 text-3xl drop-shadow">
+              <div className="absolute right-4 top-4 text-4xl drop-shadow">
                 {stamp || "📮"}
               </div>
             )}
 
             {isExpress && (
-              <div className="absolute left-3 top-3 rounded-full bg-black/70 px-2 py-1 text-[10px] uppercase tracking-wide text-white">
+              <div className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs uppercase tracking-wide text-white">
                 Express
               </div>
             )}
           </div>
 
-          {/* Dorso */}
-          <div className="absolute inset-0 rounded-xl border bg-[#f7f3ea] p-4 text-sm text-neutral-800 shadow-sm [backface-visibility:hidden] [transform:rotateY(180deg)]">
-            <div className="grid h-full grid-cols-[65fr_auto_35fr] gap-4">
-              <div className="flex min-h-0 flex-col overflow-hidden">
-                <p className="mb-2 text-[10px] uppercase tracking-wider text-neutral-500">
+          {/* DORSO */}
+          <div className="absolute inset-0 overflow-hidden rounded-xl border bg-[#f7f3ea] p-6 text-neutral-800 shadow-md [backface-visibility:hidden] [transform:rotateY(180deg)]">
+            <div className="grid h-full min-h-0 grid-cols-[1.5fr_1px_1fr] gap-6">
+              {/* Mensaje */}
+              <div className="min-h-0 overflow-auto pr-2">
+                <p className="mb-3 text-xs uppercase tracking-wider text-neutral-500">
                   Mensaje
                 </p>
-                <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed">
+                <p className="whitespace-pre-wrap break-words text-base leading-7 md:text-lg md:leading-8">
                   {message}
                 </p>
               </div>
 
-              <div className="w-px bg-neutral-300" />
+              <div className="bg-neutral-300" />
 
-              <div className="flex min-h-0 flex-col gap-4 overflow-hidden px-3 py-2 text-sm">
-                <div className="min-w-0">
-                  <p className="mb-1 text-[10px] uppercase tracking-wider text-neutral-500">
+              {/* Direcciones */}
+              <div className="flex min-h-0 flex-col justify-between gap-6 overflow-auto pl-1">
+                <div>
+                  <p className="mb-2 text-xs uppercase tracking-wider text-neutral-500">
                     De
                   </p>
-                  <p className="whitespace-pre-wrap break-words font-medium">
+                  <p className="whitespace-pre-wrap break-words text-base font-medium leading-7">
                     {fromAddress || "—"}
                   </p>
                 </div>
-                <div className="min-w-0 mt-3">
-                  <p className="mb-1 text-[10px] uppercase tracking-wider text-neutral-500">
+                <div>
+                  <p className="mb-2 text-xs uppercase tracking-wider text-neutral-500">
                     Para
                   </p>
-                  <p className="whitespace-pre-wrap break-words">
+                  <p className="whitespace-pre-wrap break-words text-base leading-7">
                     {toAddress || "—"}
                   </p>
                 </div>

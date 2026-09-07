@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DELIVERY_METHODS } from "@/lib/delivery-methods";
+import AppHeader from "@/components/AppHeader";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -33,34 +34,7 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-semibold tracking-tight">
-            Nuestro Buzón
-          </h1>
-          <div className="flex items-center gap-3">
-            <Link href="/write">
-              <Button size="sm">Escribir carta</Button>
-            </Link>
-            <Link href="/profile">
-              <Button variant="ghost" size="sm">
-                Perfil
-              </Button>
-            </Link>
-            <Link href="/stamps">
-              <Button variant="ghost" size="sm">
-                Estampas
-              </Button>
-            </Link>
-            <form action="/auth/signout" method="post">
-              <Button type="submit" variant="outline" size="sm">
-                Salir
-              </Button>
-            </form>
-          </div>
-        </div>
-      </header>
-
+      <AppHeader profile={profile} email={user.email} />
       <main className="max-w-3xl mx-auto px-6 py-10">
         <div className="text-center space-y-2 mb-10">
           <h2 className="text-3xl font-medium">

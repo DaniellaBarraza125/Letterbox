@@ -14,16 +14,36 @@ export default async function WritePage() {
 
   const { data: myProfile } = await supabase
     .from("profiles")
-    .select("display_name, location")
+    .select("display_name, location, lat, lng")
     .eq("id", user.id)
     .single();
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, display_name, email, location")
+    .select("id, display_name, email, location, lat, lng")
     .neq("id", user.id);
 
-  const recipient = profiles?.[0] || null;
+  const { data: connection } = await supabase
+    .from("connections")
+    .select("*")
+    .eq("status", "accepted")
+    .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+    .maybeSingle();
+
+  let recipient = null;
+
+  if (connection) {
+    const otherId =
+      connection.user_a === user.id ? connection.user_b : connection.user_a;
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, display_name, email, location, lat, lng")
+      .eq("id", otherId)
+      .single();
+
+    recipient = data;
+  }
 
   return (
     <div className="min-h-screen p-6 max-w-2xl mx-auto">
@@ -54,6 +74,10 @@ export default async function WritePage() {
             myProfile?.display_name || user.email?.split("@")[0] || "Yo"
           }
           senderLocation={myProfile?.location || ""}
+          senderLat={myProfile?.lat ?? null}
+          senderLng={myProfile?.lng ?? null}
+          recipientLat={recipient.lat ?? null}
+          recipientLng={recipient.lng ?? null}
         />
       ) : (
         <p className="text-muted-foreground">

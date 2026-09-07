@@ -69,22 +69,40 @@ export default function ProfileForm({
     setLoading(true);
     setMessage("");
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        display_name: displayName,
-        location: location,
-        avatar_url: avatarUrl,
-      })
-      .eq("id", profile?.id);
+    try {
+      let lat: number | null = null;
+      let lng: number | null = null;
 
-    if (error) {
-      setMessage(error.message);
-    } else {
-      setMessage("Perfil actualizado correctamente");
+      if (location.trim()) {
+        const geoRes = await fetch(
+          `/api/geocode?q=${encodeURIComponent(location.trim())}`,
+        );
+        if (geoRes.ok) {
+          const geo = await geoRes.json();
+          lat = geo.lat;
+          lng = geo.lng;
+        }
+      }
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          display_name: displayName,
+          location,
+          avatar_url: avatarUrl,
+          lat,
+          lng,
+        })
+        .eq("id", profile?.id);
+
+      if (error) throw error;
+      setMessage("Perfil actualizado");
       router.refresh();
+    } catch (err: any) {
+      setMessage(err.message || "Error al guardar");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
