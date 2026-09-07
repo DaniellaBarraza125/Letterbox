@@ -1,7 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import WriteLetterForm from "@/components/WriteLetterForm";
+import WriteLetterForm from "../../../components/WriteLetterForm";
 
 export default async function WritePage() {
   const supabase = await createClient();
