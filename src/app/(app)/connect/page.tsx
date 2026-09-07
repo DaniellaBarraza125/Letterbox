@@ -17,6 +17,20 @@ export default async function ConnectPage() {
     .select("*")
     .or(`user_a.eq.${user.id},user_b.eq.${user.id}`);
 
+  const { data: profiles } = await supabase.from("profiles").select("*");
+
+  const connectionsWithProfiles = connections?.map((conn) => ({
+    ...conn,
+    user_a: profiles?.find((p) => p.id === conn.user_a),
+    user_b: profiles?.find((p) => p.id === conn.user_b),
+  }));
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
   return (
     <div className="min-h-screen p-6 max-w-lg mx-auto">
       <Link href="/" className="text-sm text-muted-foreground hover:underline">
@@ -32,21 +46,33 @@ export default async function ConnectPage() {
 
       <div className="mt-10 space-y-3">
         <h2 className="font-medium">Tus conexiones</h2>
-        {!connections?.length ? (
+        {!connectionsWithProfiles?.length ? (
           <p className="text-sm text-muted-foreground">
             Aún no hay nadie vinculado.
           </p>
         ) : (
-          connections.map((c) => {
-            const other = c.user_a === user.id ? c.profile_b : c.profile_a;
+          connectionsWithProfiles.map((c) => {
+            const other = c.user_a.id === user.id ? c.user_b : c.user_a;
             return (
-              <div key={c.id} className="rounded-lg border p-3 text-sm">
-                <p className="font-medium">
-                  {(other as any)?.display_name ||
-                    (other as any)?.email ||
-                    "Persona"}
-                </p>
-                <p className="text-muted-foreground">{c.status}</p>
+              <div
+                key={c.id}
+                className="rounded-lg border p-3 text-sm flex gap-3"
+              >
+                {other?.avatar_url ? (
+                  <img
+                    src={other.avatar_url}
+                    alt={other?.display_name || "Persona"}
+                    className="h-12 w-12 rounded-full object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div className="h-12 w-12 rounded-full bg-muted flex-shrink-0" />
+                )}
+                <div className="flex-1">
+                  <p className="font-medium">
+                    {other?.display_name || other?.email || "Persona"}
+                  </p>
+                  <p className="text-muted-foreground">{c.status}</p>
+                </div>
               </div>
             );
           })
